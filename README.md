@@ -95,10 +95,10 @@ Results can be exported as an **Excel file** (.xlsx) containing:
 
 ## 📌 Future Improvements
 
-✅ Integration with **cloud storage** for dataset sharing.
-✅ Support for **custom YOLO models**.
-✅ **Performance optimizations** for real-time tracking.
-✅ Enhanced **post-processing features**.
+- ✅ Integration with **cloud storage** for dataset sharing.
+- ✅ Support for **custom YOLO models**.
+- ✅ **Performance optimizations** for real-time tracking.
+- ✅ Enhanced **post-processing features**.
 
 ---
 
