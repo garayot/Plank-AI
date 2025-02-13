@@ -17,4 +17,3 @@ ultralytics>=8.2.34  # https://ultralytics.com
 norfair>=2.2.0  # object tracking
 PySide6>=6.8.1.1  # GUI
 pandas>=2.2.3
-
