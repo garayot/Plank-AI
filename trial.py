@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Plank AI")
         # self.setGeometry(100, 100, 1400, 800)  # Adjusted for new right panel 
 
-        self.setWindowIcon(QIcon("plankai-icon.ico"))  # Set the window icon
+        self.setWindowIcon(QIcon("images/plankai-icon.ico"))  # Set the window icon
 
         self.show_bboxes = True
         self.show_ids = True
@@ -324,7 +324,7 @@ class MainWindow(QMainWindow):
 
         # Add Logo
         logo_label = QLabel()
-        pixmap = QPixmap("plankai-icon.png")
+        pixmap = QPixmap("images/plankai-icon.png")
         logo_label.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio))
         logo_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(logo_label)
@@ -759,7 +759,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
      # Load splash image
-    splash_pixmap = QPixmap("plankai.png")  # Replace with your splash image path
+    splash_pixmap = QPixmap("images/plankai.png")  # Replace with your splash image path
     splash = QSplashScreen(splash_pixmap, Qt.WindowStaysOnTopHint)
     splash.show()
 
