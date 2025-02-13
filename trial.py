@@ -14,7 +14,6 @@ from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize
 
 from collections import defaultdict
-
 """
 Process Overview:
 This class, `YOLOv5Worker`, is a QThread-based implementation for real-time object detection,
@@ -61,7 +60,7 @@ class YOLOv5Worker(QThread):
         )
         
         # Load the YOLOv5 model with default weights
-        self.load_model("10x.pt")
+        self.load_model("models/10x.pt")
 
         self.class_name_correction = {
             "Pyrodinium bahamense var compressum": "Pyrodinium bahamense var. compressum"
@@ -225,7 +224,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Plank AI")
         # self.setGeometry(100, 100, 1400, 800)  # Adjusted for new right panel 
 
-        self.setWindowIcon(QIcon("plankai-icon.ico"))  # Set the window icon
+        self.setWindowIcon(QIcon("images/plankai-icon.ico"))  # Set the window icon
 
         self.show_bboxes = True
         self.show_ids = True
@@ -276,7 +275,7 @@ class MainWindow(QMainWindow):
         self.yolo_worker = YOLOv5Worker(camera_index=0)
         self.yolo_worker.frame_processed.connect(self.update_frame)
         self.yolo_worker.class_tally_updated.connect(self.update_tally)
-        self.yolo_worker.load_model("10x.pt")
+        self.yolo_worker.load_model("models/10x.pt")
         self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels)
         self.yolo_worker.start()
 
@@ -325,7 +324,7 @@ class MainWindow(QMainWindow):
 
         # Add Logo
         logo_label = QLabel()
-        pixmap = QPixmap("plankai-icon.png")
+        pixmap = QPixmap("images/plankai-icon.png")
         logo_label.setPixmap(pixmap.scaled(64, 64, Qt.KeepAspectRatio))
         logo_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(logo_label)
@@ -674,10 +673,10 @@ class MainWindow(QMainWindow):
 
     def change_lens_model(self, lens):
         model_paths = {
-            "10x": "10x.pt", 
-            "40x": "40x.pt", 
+            "10x": "models/10x.pt", 
+            "40x": "models/40x.pt", 
         }
-        selected_model = model_paths.get(lens, "10x.pt")
+        selected_model = model_paths.get(lens, "models/10x.pt")
         self.yolo_worker.load_model(selected_model)
         success_message = f"Lens changed to {lens}, model loaded: {selected_model}"
         print(success_message)
@@ -760,7 +759,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
      # Load splash image
-    splash_pixmap = QPixmap("plankai.png")  # Replace with your splash image path
+    splash_pixmap = QPixmap("images/plankai.png")  # Replace with your splash image path
     splash = QSplashScreen(splash_pixmap, Qt.WindowStaysOnTopHint)
     splash.show()
 
