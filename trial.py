@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog
 )
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
-from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize
+from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime
 
 from collections import defaultdict
 """
@@ -226,6 +226,14 @@ class MainWindow(QMainWindow):
 
         self.setWindowIcon(QIcon("images/plankai-icon.ico"))  # Set the window icon
 
+        self.video_save_path = "C:/Users/garay/Desktop/Plank AI"  # Default empty path
+        self.is_recording = False
+        self.video_writer = None
+        self.start_time = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_timer_display)
+        self.elapsed_time = 0
+
         self.show_bboxes = True
         self.show_ids = True
         self.show_labels = True
@@ -303,7 +311,9 @@ class MainWindow(QMainWindow):
         # Adjust Cell Density params
         preferences_menu = menu_bar.addMenu("Preferences")
         cell_density_calculator_action = preferences_menu.addAction("Cell Density Calculator")
+        video_directory_action = preferences_menu.addAction("Video Directory")
         cell_density_calculator_action.triggered.connect(self.show_preference_dialog)
+        video_directory_action.triggered.connect(self.set_save_path)
         
         # Help Menu
         help_menu = menu_bar.addMenu("Help")
@@ -379,6 +389,12 @@ class MainWindow(QMainWindow):
 
         dialog.setLayout(layout)
         dialog.exec()
+
+    def set_save_path(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Save Directory")
+        if directory:
+            self.video_save_path = directory
+            QMessageBox.information(self, "Save Path Set", f"Videos will be saved to: {directory}")
 
     def show_user_guide(self):
         user_guide_box = QMessageBox(self)
@@ -639,37 +655,55 @@ class MainWindow(QMainWindow):
     #     print(f"Resolution set to {width}x{height}")
 
     def toggle_recording(self):
-        if not hasattr(self, 'is_recording'):
-            self.is_recording = False
-        
         if self.is_recording:
             self.stop_recording()
         else:
             self.start_recording()
 
     def start_recording(self):
-        save_path, _ = QFileDialog.getSaveFileName(self, "Save Recording", "", "Video Files (*.mp4)")
-        if save_path:
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')  # Change codec as needed
-            width = int(self.yolo_worker.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(self.yolo_worker.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = int(self.yolo_worker.capture.get(cv2.CAP_PROP_FPS))
-            
-            self.video_writer = cv2.VideoWriter(save_path, fourcc, fps, (width, height))
-            self.is_recording = True
-            self.record_button.setText("Stop Recording")
-            self.statusBar().showMessage("Recording started.")
-        else:
-            self.statusBar().showMessage("Recording canceled.")
+        if not self.video_save_path:
+            QMessageBox.critical(self, "Error", "No save path set. Please set a save path in Preferences.")
+            return
+        
+        # Ensure directory exists
+        save_dir = Path(self.video_save_path)
+        if not save_dir.exists():
+            QMessageBox.critical(self, "Error", "Save directory does not exist. Please select a valid path.")
+            return
+        
+        filename = save_dir / f"recording_{QDateTime.currentDateTime().toString('yyyyMMdd_HHmmss')}.avi"
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        width = int(self.yolo_worker.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(self.yolo_worker.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = int(self.yolo_worker.capture.get(cv2.CAP_PROP_FPS)) or 11  # Default to 30 if 0
+
+        self.video_writer = cv2.VideoWriter(str(filename), fourcc, fps, (width, height))
+        self.is_recording = True
+        self.start_time = QTime.currentTime()
+        self.elapsed_time = 0
+        self.timer.start(10)  # Update timer every 10ms
+        self.statusBar().showMessage("Recording started...")
+        self.record_button.setText("Stop Recording")
+        self.current_video_filename = str(filename)
 
     def stop_recording(self):
-        if hasattr(self, 'video_writer') and self.video_writer:
+        if self.video_writer:
             self.video_writer.release()
             self.video_writer = None
-
+        
         self.is_recording = False
+        self.timer.stop()
+        self.statusBar().showMessage(f"Recording saved: {self.current_video_filename}")
+        QMessageBox.information(self, "Recording Saved", f"Video saved to: {self.current_video_filename}")
         self.record_button.setText("Start Recording")
-        self.statusBar().showMessage("Recording stopped.")
+
+    def update_timer_display(self):
+        if self.start_time:
+            elapsed = self.start_time.msecsTo(QTime.currentTime())
+            minutes = elapsed // 60000
+            seconds = (elapsed % 60000) // 1000
+            milliseconds = elapsed % 1000
+            self.statusBar().showMessage(f"Recording: {minutes:02}:{seconds:02}.{milliseconds:03}")
 
     def change_lens_model(self, lens):
         model_paths = {
@@ -691,6 +725,12 @@ class MainWindow(QMainWindow):
     def update_frame(self, q_image):
         pixmap = QPixmap.fromImage(q_image)
         self.video_label.setPixmap(pixmap.scaled(self.video_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+        if self.is_recording and self.video_writer:
+            frame = q_image.bits().tobytes()
+            frame = np.frombuffer(frame, dtype=np.uint8).reshape((q_image.height(), q_image.width(), 3))
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            self.video_writer.write(frame)
 
     def update_tally(self, tallies):
         self.species_tally = tallies
