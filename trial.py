@@ -302,7 +302,10 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu("File")
         exit_action = file_menu.addAction("Exit")
         exit_action.triggered.connect(self.close)
-
+        load_tally_action = QAction("Load Tally File", self)
+        load_tally_action.triggered.connect(self.load_tally_file)
+        file_menu.addAction(load_tally_action)
+        
         # About Menu
         about_menu = menu_bar.addMenu("About")
         about_action = about_menu.addAction("About Plank.AI")
@@ -731,6 +734,23 @@ class MainWindow(QMainWindow):
             frame = np.frombuffer(frame, dtype=np.uint8).reshape((q_image.height(), q_image.width(), 3))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             self.video_writer.write(frame)
+
+    def load_tally_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Tally File", "", "Excel Files (*.xlsx)")
+        if file_path:
+            try:
+                df = pd.read_excel(file_path)
+                if not all(col in df.columns for col in ["Species", "Count", "Cell Density (cells/mL)"]):
+                    QMessageBox.warning(self, "Invalid File", "The selected file does not have the required columns.")
+                    return
+
+                self.tally_table.setRowCount(len(df))
+                for row, (species, count, density) in enumerate(zip(df["Species"], df["Count"], df["Cell Density (cells/mL)"])):
+                    self.tally_table.setItem(row, 0, QTableWidgetItem(species))
+                    self.tally_table.setItem(row, 1, QTableWidgetItem(str(count)))
+                    self.tally_table.setItem(row, 2, QTableWidgetItem(f"{density:.2f}"))
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
 
     def update_tally(self, tallies):
         self.species_tally = tallies
