@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QPushButton, QScrollArea, QFrame, QComboBox, QFileDialog, QTableWidget, QTableWidgetItem, 
     QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog
 )
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
+from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QPainter, QPen, QColor, QFont
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime
 
 from collections import defaultdict
@@ -238,6 +238,11 @@ class MainWindow(QMainWindow):
         self.show_ids = True
         self.show_labels = True
 
+        self.is_measuring = False
+        self.measure_start = None
+        self.measure_end = None
+        self.pixel_to_micrometer = 0.25
+
         self.setMenuBar(self.create_menu_bar())
 
         # Initialize parameters as attributes
@@ -248,10 +253,11 @@ class MainWindow(QMainWindow):
 
         self.toolbar = self.addToolBar("Main Toolbar")
         self.toolbar.setIconSize(QSize(24, 24))  # Set icon size
+        
+        self.top_panel = self.toolbar_actions()
 
         # Create main layout using QSplitter layout
         main_layout = QVBoxLayout()
-        self.top_panel = self.toolbar_actions()
         # main_layout.addWidget(self.top_panel)
 
         self.splitter = QSplitter(Qt.Horizontal)
@@ -305,7 +311,7 @@ class MainWindow(QMainWindow):
         load_tally_action = QAction("Load Tally File", self)
         load_tally_action.triggered.connect(self.load_tally_file)
         file_menu.addAction(load_tally_action)
-        
+
         # About Menu
         about_menu = menu_bar.addMenu("About")
         about_action = about_menu.addAction("About Plank.AI")
@@ -435,6 +441,10 @@ class MainWindow(QMainWindow):
         stop_action = QAction(QIcon("icons/stop-button.png"), "Stop", self)
         stop_action.triggered.connect(self.stop_detection)
         self.toolbar.addAction(stop_action)
+
+        measure_action = QAction(QIcon("icons/measure.png"), "Measure", self)
+        measure_action.triggered.connect(self.toggle_measurement)
+        self.toolbar.addAction(measure_action)
     
     def create_settings_panel(self):
         # Create a scrollable settings panel
@@ -607,6 +617,50 @@ class MainWindow(QMainWindow):
         if self.yolo_worker.isRunning():
             self.yolo_worker.stop()
             self.statusBar().showMessage("Detection stopped.")
+
+    def toggle_measurement(self):
+        self.is_measuring = not self.is_measuring
+        if self.is_measuring:
+            self.statusBar().showMessage("Measurement Mode: Click two points to measure.")
+        else:
+            self.statusBar().clearMessage()
+
+    def mousePressEvent(self, event):
+        if self.is_measuring:
+            if not self.measure_start:
+                self.measure_start = event.pos()
+            else:
+                self.measure_end = event.pos()
+                self.calculate_measurement()
+                self.update()
+    
+    def calculate_measurement(self):
+        if self.measure_start and self.measure_end:
+            pixel_distance = ((self.measure_end.x() - self.measure_start.x())**2 +
+                              (self.measure_end.y() - self.measure_start.y())**2) ** 0.5
+            size_micrometers = pixel_distance * self.pixel_to_micrometer
+            QMessageBox.information(self, "Measurement Result", f"Size: {size_micrometers:.2f} µm")
+            
+            self.measure_start = None
+            self.measure_end = None
+            self.is_measuring = False
+            self.statusBar().clearMessage()
+    
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.measure_start and self.measure_end:
+            painter = QPainter(self)
+            pen = QPen(QColor("red"))
+            pen.setWidth(2)
+            painter.setPen(pen)
+            painter.drawLine(self.measure_start, self.measure_end)
+            
+            # Draw points
+            point_pen = QPen(QColor("blue"))
+            point_pen.setWidth(5)
+            painter.setPen(point_pen)
+            painter.drawPoint(self.measure_start)
+            painter.drawPoint(self.measure_end)
 
     def toggle_display_options(self):
         self.show_bboxes = self.bbox_checkbox.isChecked()
