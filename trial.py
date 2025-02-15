@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QPushButton, QScrollArea, QFrame, QComboBox, QFileDialog, QTableWidget, QTableWidgetItem, 
     QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog
 )
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
+from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QPainter, QPen, QColor, QFont
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime
 
 from collections import defaultdict
@@ -40,6 +40,7 @@ class YOLOv5Worker(QThread):
         self.show_bboxes = True #toggles bounding boxes
         self.show_ids = True #toggles object ids
         self.show_labels = True #toggles object labels
+        self.display_size_labels = True # Default display size labels
         self.running = False  # Flag to control thread execution
         self.capture = None  # Video capture object
         self.camera_index = camera_index  # Index of the camera to use
@@ -50,8 +51,9 @@ class YOLOv5Worker(QThread):
         self.conf_thresh = 0.5 # Default confidence threshold for YOLOv5 detections
         self.distance_threshold = 150 # Default distance threshold for Norfair object tracking
         
+        
         # Assign unique colors for each detected species
-        self.species_colors = defaultdict(lambda: tuple([int(x) for x in np.random.choice(range(256), size=3)]))
+        self.species_colors = defaultdict(lambda: tuple([int(x) for x in np.random.choice(range(7), size=3)]))
         
         # Initialize the Norfair tracker with Euclidean distance function
         self.tracker = Tracker(
@@ -76,10 +78,14 @@ class YOLOv5Worker(QThread):
             distance_threshold=self.distance_thresh
         )
 
-    def set_display_options(self, show_bboxes, show_ids, show_labels):
+    def set_display_options(self, show_bboxes, show_ids, show_labels, display_size_labels):
         self.show_bboxes = show_bboxes
         self.show_ids = show_ids
         self.show_labels = show_labels
+        self.display_size_labels = bool(display_size_labels)
+
+    # def toggle_size_labels(self, state):
+    #     self.display_size_labels = bool(state)
 
     def load_model(self, weights_path):
         """
@@ -134,7 +140,9 @@ class YOLOv5Worker(QThread):
             # Save bounding box and label info for visualization
             class_name = self.yolo_model.names[int(class_id)]
             color = self.species_colors[class_name]  # Assign unique color per class
-            self.bounding_boxes.append((int(x_min), int(y_min), int(x_max), int(y_max), class_name, color))
+            width_um = (x_max - x_min) * 0.25  # Convert pixels to micrometers
+            height_um = (y_max - y_min) * 0.25 # Adjust for calibration
+            self.bounding_boxes.append((int(x_min), int(y_min), int(x_max), int(y_max), class_name, color, width_um, height_um))
 
         return detections
 
@@ -186,10 +194,13 @@ class YOLOv5Worker(QThread):
             # Emit updated tallies
             self.class_tally_updated.emit(dict(self.class_tallies))
 
-            # Annotate the frame with bounding boxes and labels
-            for (x_min, y_min, x_max, y_max, label, color) in self.bounding_boxes:
+            # Annotate the frame with bounding boxes, size, and labels
+            for (x_min, y_min, x_max, y_max, label, color, width_um, height_um) in self.bounding_boxes:
                 if self.show_bboxes:
                     cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), color, 1)
+                if self.display_size_labels:
+                    size_label = f"{width_um:.2f} um x {height_um:.2f} um"
+                    cv2.putText(frame, size_label, (x_min, y_max + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                 if self.show_labels:
                     cv2.putText(frame, label, (x_min, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
@@ -237,6 +248,12 @@ class MainWindow(QMainWindow):
         self.show_bboxes = True
         self.show_ids = True
         self.show_labels = True
+        self.display_size_labels = True
+
+        # self.is_measuring = False
+        # self.measure_start = None
+        # self.measure_end = None
+        # self.pixel_to_micrometer = 0.25
 
         self.setMenuBar(self.create_menu_bar())
 
@@ -284,7 +301,7 @@ class MainWindow(QMainWindow):
         self.yolo_worker.frame_processed.connect(self.update_frame)
         self.yolo_worker.class_tally_updated.connect(self.update_tally)
         self.yolo_worker.load_model("models/10x.pt")
-        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels)
+        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels)
         self.yolo_worker.start()
 
     def init_ui(self):
@@ -305,7 +322,7 @@ class MainWindow(QMainWindow):
         load_tally_action = QAction("Load Tally File", self)
         load_tally_action.triggered.connect(self.load_tally_file)
         file_menu.addAction(load_tally_action)
-        
+
         # About Menu
         about_menu = menu_bar.addMenu("About")
         about_action = about_menu.addAction("About Plank.AI")
@@ -435,6 +452,10 @@ class MainWindow(QMainWindow):
         stop_action = QAction(QIcon("icons/stop-button.png"), "Stop", self)
         stop_action.triggered.connect(self.stop_detection)
         self.toolbar.addAction(stop_action)
+
+        # measure_action = QAction(QIcon("icons/measure.png"), "Measure", self)
+        # measure_action.triggered.connect(self.toggle_measurement)
+        # self.toolbar.addAction(measure_action)
     
     def create_settings_panel(self):
         # Create a scrollable settings panel
@@ -464,6 +485,11 @@ class MainWindow(QMainWindow):
         self.label_checkbox.setChecked(True)
         self.label_checkbox.stateChanged.connect(self.toggle_display_options)
         display_layout.addWidget(self.label_checkbox)
+
+        self.toggle_size_checkbox = QCheckBox("Show Box Sizes")
+        self.toggle_size_checkbox.setChecked(True)
+        self.toggle_size_checkbox.stateChanged.connect(self.toggle_display_options)
+        display_layout.addWidget(self.toggle_size_checkbox)
 
         display_options_group.setLayout(display_layout)
         settings_layout.addWidget(display_options_group)
@@ -608,11 +634,49 @@ class MainWindow(QMainWindow):
             self.yolo_worker.stop()
             self.statusBar().showMessage("Detection stopped.")
 
+    # def toggle_measurement(self):
+    #     self.is_measuring = not self.is_measuring
+    #     if self.is_measuring:
+    #         self.statusBar().showMessage("Measurement Mode: Click two points to measure.")
+    #     else:
+    #         self.statusBar().clearMessage()
+
+    # def mousePressEvent(self, event):
+    #     if self.is_measuring:
+    #         if not self.measure_start:
+    #             self.measure_start = event.pos()
+    #         else:
+    #             self.measure_end = event.pos()
+    #             self.calculate_measurement()
+    #             self.update()
+    
+    # def calculate_measurement(self):
+    #     if self.measure_start and self.measure_end:
+    #         pixel_distance = ((self.measure_end.x() - self.measure_start.x())**2 +
+    #                           (self.measure_end.y() - self.measure_start.y())**2) ** 0.5
+    #         size_micrometers = pixel_distance * self.pixel_to_micrometer
+    #         QMessageBox.information(self, "Measurement Result", f"Size: {size_micrometers:.2f} µm")
+            
+    #         self.measure_start = None
+    #         self.measure_end = None
+    #         self.is_measuring = False
+    #         self.statusBar().clearMessage()
+    
+    # def paintEvent(self, event):
+    #     super().paintEvent(event)
+    #     if self.measure_start and self.measure_end:
+    #         painter = QPainter(self)
+    #         pen = QPen(QColor("green"))
+    #         pen.setWidth(2)
+    #         painter.setPen(pen)
+    #         painter.drawLine(self.measure_start, self.measure_end)
+
     def toggle_display_options(self):
         self.show_bboxes = self.bbox_checkbox.isChecked()
         self.show_ids = self.id_checkbox.isChecked()
         self.show_labels = self.label_checkbox.isChecked()
-        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels)
+        self.display_size_labels = self.toggle_size_checkbox.isChecked()
+        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels)
 
     def get_camera_list(self):
         available_cameras = []
