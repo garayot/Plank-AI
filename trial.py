@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QPushButton, QScrollArea, QFrame, QComboBox, QFileDialog, QTableWidget, QTableWidgetItem, 
     QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog
 )
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QPainter, QPen, QColor, QFont
+from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime
 
 from collections import defaultdict
@@ -452,10 +452,6 @@ class MainWindow(QMainWindow):
         stop_action = QAction(QIcon("icons/stop-button.png"), "Stop", self)
         stop_action.triggered.connect(self.stop_detection)
         self.toolbar.addAction(stop_action)
-
-        # measure_action = QAction(QIcon("icons/measure.png"), "Measure", self)
-        # measure_action.triggered.connect(self.toggle_measurement)
-        # self.toolbar.addAction(measure_action)
     
     def create_settings_panel(self):
         # Create a scrollable settings panel
@@ -530,15 +526,6 @@ class MainWindow(QMainWindow):
             self.record_button = QPushButton("Start Recording")
             self.record_button.clicked.connect(self.toggle_recording)
             layout.addWidget(self.record_button)
-
-            # # Resolution options
-            # resolution_label = QLabel("Set Resolution:")
-            # layout.addWidget(resolution_label)
-
-            # self.resolution_combo = QComboBox()
-            # self.resolution_combo.addItems(["640x480", "1280x720", "1920x1080"])
-            # self.resolution_combo.currentTextChanged.connect(self.change_resolution)
-            # layout.addWidget(self.resolution_combo)
         
         elif title == "Select Lens":
             lens_label = QLabel("Select Lens:")
@@ -634,43 +621,6 @@ class MainWindow(QMainWindow):
             self.yolo_worker.stop()
             self.statusBar().showMessage("Detection stopped.")
 
-    # def toggle_measurement(self):
-    #     self.is_measuring = not self.is_measuring
-    #     if self.is_measuring:
-    #         self.statusBar().showMessage("Measurement Mode: Click two points to measure.")
-    #     else:
-    #         self.statusBar().clearMessage()
-
-    # def mousePressEvent(self, event):
-    #     if self.is_measuring:
-    #         if not self.measure_start:
-    #             self.measure_start = event.pos()
-    #         else:
-    #             self.measure_end = event.pos()
-    #             self.calculate_measurement()
-    #             self.update()
-    
-    # def calculate_measurement(self):
-    #     if self.measure_start and self.measure_end:
-    #         pixel_distance = ((self.measure_end.x() - self.measure_start.x())**2 +
-    #                           (self.measure_end.y() - self.measure_start.y())**2) ** 0.5
-    #         size_micrometers = pixel_distance * self.pixel_to_micrometer
-    #         QMessageBox.information(self, "Measurement Result", f"Size: {size_micrometers:.2f} µm")
-            
-    #         self.measure_start = None
-    #         self.measure_end = None
-    #         self.is_measuring = False
-    #         self.statusBar().clearMessage()
-    
-    # def paintEvent(self, event):
-    #     super().paintEvent(event)
-    #     if self.measure_start and self.measure_end:
-    #         painter = QPainter(self)
-    #         pen = QPen(QColor("green"))
-    #         pen.setWidth(2)
-    #         painter.setPen(pen)
-    #         painter.drawLine(self.measure_start, self.measure_end)
-
     def toggle_display_options(self):
         self.show_bboxes = self.bbox_checkbox.isChecked()
         self.show_ids = self.id_checkbox.isChecked()
@@ -713,13 +663,6 @@ class MainWindow(QMainWindow):
             error_message = "No video frame available to capture."
             print(error_message)
             self.show_notification(error_message)
-
-    # def change_resolution(self, resolution):
-    #     """Change the resolution of the video feed."""
-    #     width, height = map(int, resolution.split('x'))
-    #     self.yolo_worker.capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    #     self.yolo_worker.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    #     print(f"Resolution set to {width}x{height}")
 
     def toggle_recording(self):
         if self.is_recording:
