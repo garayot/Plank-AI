@@ -797,6 +797,12 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap.fromImage(q_image)
         new_size = pixmap.size() * self.zoom_factor
         scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        # Constrain pan offset to prevent black areas
+        max_x_offset = max(0, scaled_pixmap.width() - self.video_label.width())
+        max_y_offset = max(0, scaled_pixmap.height() - self.video_label.height())
+        self.pan_offset.setX(max(0, min(self.pan_offset.x(), max_x_offset)))
+        self.pan_offset.setY(max(0, min(self.pan_offset.y(), max_y_offset)))
         
         # Apply panning offset
         target_rect = QRect(self.pan_offset.x(), self.pan_offset.y(), self.video_label.width(), self.video_label.height())
