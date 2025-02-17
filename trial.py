@@ -460,7 +460,7 @@ class MainWindow(QMainWindow):
         zoom_layout.addWidget(zoom_out_btn)
 
         self.zoom_slider = QSlider(Qt.Horizontal)
-        self.zoom_slider.setRange(50, 200)
+        self.zoom_slider.setRange(50, 400)
         self.zoom_slider.setValue(100)
         self.zoom_slider.valueChanged.connect(self.update_zoom)
         zoom_layout.addWidget(self.zoom_slider)
@@ -482,10 +482,10 @@ class MainWindow(QMainWindow):
         self.toolbar.addWidget(zoom_container)
 
     def zoom_in(self):
-        self.zoom_slider.setValue(min(self.zoom_slider.value() + 10, 200))
+        self.zoom_slider.setValue(min(self.zoom_slider.value() + 20, 400))
 
     def zoom_out(self):
-        self.zoom_slider.setValue(max(self.zoom_slider.value() - 10, 50))
+        self.zoom_slider.setValue(max(self.zoom_slider.value() - 20, 60))
 
     def reset_zoom(self):
         self.zoom_slider.setValue(100)
@@ -783,7 +783,9 @@ class MainWindow(QMainWindow):
 
     def update_frame(self, q_image):
         pixmap = QPixmap.fromImage(q_image)
-        self.video_label.setPixmap(pixmap.scaled(self.video_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        new_size = pixmap.size() * self.zoom_factor
+        scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.video_label.setPixmap(scaled_pixmap)
 
         if self.is_recording and self.video_writer:
             frame = q_image.bits().tobytes()
