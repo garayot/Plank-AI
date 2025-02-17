@@ -1,12 +1,16 @@
 {
     "cSpell.words": [
         "bboxes",
+        "frombuffer",
         "ftracked",
+        "Imaself",
         "linalg",
         "Norfair",
         "Palatolon",
         "pixmap",
         "plankai",
+        "qimage",
+        "tobytes",
         "Ville",
         "xyxy",
         "yolov"

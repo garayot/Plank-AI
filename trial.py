@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
     QGroupBox, QPushButton, QScrollArea, QFrame, QComboBox, QFileDialog, QTableWidget, QTableWidgetItem, 
     QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog, QHBoxLayout
 )
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
-from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime
+from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QMouseEvent
+from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime, QPoint, QRect
 
 from collections import defaultdict
 """
@@ -252,6 +252,10 @@ class MainWindow(QMainWindow):
 
         self.zoom_factor = 1.0
 
+        self.pan_offset = QPoint(0, 0)  # Initial panning offset
+        self.is_panning = False  # Track whether panning is active
+        self.last_mouse_pos = QPoint()  # Store last mouse position
+
         self.setMenuBar(self.create_menu_bar())
 
         # Initialize parameters as attributes
@@ -489,18 +493,20 @@ class MainWindow(QMainWindow):
 
     def reset_zoom(self):
         self.zoom_slider.setValue(100)
+        self.pan_offset = QPoint(0, 0)  # Reset panning
+        self.update_frame(self.current_qimage)
 
     def update_zoom(self, value):
         self.zoom_factor = value / 100.0
         self.zoom_label.setText(f"{value}%")
-        self.apply_zoom()
+        self.update_frame(self.current_qimage)
 
-    def apply_zoom(self):
-        if self.video_label.pixmap():
-            pixmap = self.video_label.pixmap()
-            new_size = pixmap.size() * self.zoom_factor
-            scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.video_label.setPixmap(scaled_pixmap)
+    # def apply_zoom(self):
+    #     if self.video_label.pixmap():
+    #         pixmap = self.video_label.pixmap()
+    #         new_size = pixmap.size() * self.zoom_factor
+    #         scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    #         self.video_label.setPixmap(scaled_pixmap)
     
     def create_settings_panel(self):
         # Create a scrollable settings panel
@@ -625,6 +631,11 @@ class MainWindow(QMainWindow):
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.video_label.setScaledContents(False)
+        self.video_label.setMouseTracking(True)
+
+        self.video_label.mousePressEvent = self.start_pan
+        self.video_label.mouseMoveEvent = self.pan_video
+        self.video_label.mouseReleaseEvent = self.end_pan
 
         video_layout.addWidget(self.video_label)
         
@@ -782,16 +793,37 @@ class MainWindow(QMainWindow):
         self.yolo_worker.set_distance_thresh(value)
 
     def update_frame(self, q_image):
+        self.current_qimage = q_image  # Store current frame
         pixmap = QPixmap.fromImage(q_image)
         new_size = pixmap.size() * self.zoom_factor
         scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.video_label.setPixmap(scaled_pixmap)
+        
+        # Apply panning offset
+        target_rect = QRect(self.pan_offset.x(), self.pan_offset.y(), self.video_label.width(), self.video_label.height())
+        cropped_pixmap = scaled_pixmap.copy(target_rect.intersected(scaled_pixmap.rect()))
+        self.video_label.setPixmap(cropped_pixmap)
 
         if self.is_recording and self.video_writer:
             frame = q_image.bits().tobytes()
             frame = np.frombuffer(frame, dtype=np.uint8).reshape((q_image.height(), q_image.width(), 3))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             self.video_writer.write(frame)
+
+    def start_pan(self, event: QMouseEvent):
+        if self.zoom_factor > 1.0:
+            self.is_panning = True
+            self.last_mouse_pos = event.position().toPoint()
+
+    def pan_video(self, event: QMouseEvent):
+        if self.is_panning:
+            delta = event.position().toPoint() - self.last_mouse_pos
+            self.pan_offset += delta
+            self.last_mouse_pos = event.position().toPoint()
+            self.update_frame(self.current_qimage)
+
+    def end_pan(self, event: QMouseEvent):
+        self.is_panning = False
+
 
     def load_tally_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Tally File", "", "Excel Files (*.xlsx)")
