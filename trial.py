@@ -8,7 +8,7 @@ from norfair import Detection, Tracker, draw_tracked_objects
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QSizePolicy, QSplitter, QSplashScreen, 
     QGroupBox, QPushButton, QScrollArea, QFrame, QComboBox, QFileDialog, QTableWidget, QTableWidgetItem, 
-    QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog
+    QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog, QHBoxLayout
 )
 from PySide6.QtGui import QImage, QPixmap, QIcon, QAction
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime
@@ -250,10 +250,7 @@ class MainWindow(QMainWindow):
         self.show_labels = True
         self.display_size_labels = True
 
-        # self.is_measuring = False
-        # self.measure_start = None
-        # self.measure_end = None
-        # self.pixel_to_micrometer = 0.25
+        self.zoom_factor = 1.0
 
         self.setMenuBar(self.create_menu_bar())
 
@@ -269,6 +266,7 @@ class MainWindow(QMainWindow):
         # Create main layout using QSplitter layout
         main_layout = QVBoxLayout()
         self.top_panel = self.toolbar_actions()
+        self.add_zoom_controls()
         # main_layout.addWidget(self.top_panel)
 
         self.splitter = QSplitter(Qt.Horizontal)
@@ -452,6 +450,57 @@ class MainWindow(QMainWindow):
         stop_action = QAction(QIcon("icons/stop-button.png"), "Stop", self)
         stop_action.triggered.connect(self.stop_detection)
         self.toolbar.addAction(stop_action)
+
+    def add_zoom_controls(self):
+        zoom_layout = QHBoxLayout()
+
+        zoom_out_btn = QPushButton()
+        zoom_out_btn.setIcon(QIcon("icons/zoom-out.png"))
+        zoom_out_btn.clicked.connect(self.zoom_out)
+        zoom_layout.addWidget(zoom_out_btn)
+
+        self.zoom_slider = QSlider(Qt.Horizontal)
+        self.zoom_slider.setRange(50, 200)
+        self.zoom_slider.setValue(100)
+        self.zoom_slider.valueChanged.connect(self.update_zoom)
+        zoom_layout.addWidget(self.zoom_slider)
+
+        self.zoom_label = QLabel("100%")
+        zoom_layout.addWidget(self.zoom_label)
+
+        zoom_in_btn = QPushButton()
+        zoom_in_btn.setIcon(QIcon("icons/zoom-in.png"))
+        zoom_in_btn.clicked.connect(self.zoom_in)
+        zoom_layout.addWidget(zoom_in_btn)
+
+        reset_zoom_btn = QPushButton("Reset")
+        reset_zoom_btn.clicked.connect(self.reset_zoom)
+        zoom_layout.addWidget(reset_zoom_btn)
+
+        zoom_container = QWidget()
+        zoom_container.setLayout(zoom_layout)
+        self.toolbar.addWidget(zoom_container)
+
+    def zoom_in(self):
+        self.zoom_slider.setValue(min(self.zoom_slider.value() + 10, 200))
+
+    def zoom_out(self):
+        self.zoom_slider.setValue(max(self.zoom_slider.value() - 10, 50))
+
+    def reset_zoom(self):
+        self.zoom_slider.setValue(100)
+
+    def update_zoom(self, value):
+        self.zoom_factor = value / 100.0
+        self.zoom_label.setText(f"{value}%")
+        self.apply_zoom()
+
+    def apply_zoom(self):
+        if self.video_label.pixmap():
+            pixmap = self.video_label.pixmap()
+            new_size = pixmap.size() * self.zoom_factor
+            scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.video_label.setPixmap(scaled_pixmap)
     
     def create_settings_panel(self):
         # Create a scrollable settings panel
