@@ -10,7 +10,7 @@
 
 - **Real-time plankton detection** using YOLOv5
 - **Object tracking** with Norfair
-- **Customizable display options** (Bounding Boxes, Labels, Object IDs)
+- **Customizable display options** (Bounding Boxes, Labels, Object IDs, Plankton Size)
 - **Camera selection and recording capabilities**
 - **Export detection results** to Excel for analysis
 - **Plankton density calculation** based on configurable parameters
@@ -43,7 +43,7 @@ python trial.py
 1. The **YOLOv5 model** loads pre-trained weights for plankton detection.
 2. The **camera captures live frames**, which are processed by the model.
 3. **Norfair tracking** maintains object identities across frames.
-4. The GUI displays **real-time bounding boxes**, **object labels**, and **track IDs**.
+4. The GUI displays **real-time bounding boxes**, **object labels**, **track IDs**, and **plankton size**.
 5. The **species tally is updated**, and density calculations are available.
 6. Users can **export results to Excel** for further analysis.
 

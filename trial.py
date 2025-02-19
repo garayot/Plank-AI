@@ -524,21 +524,25 @@ class MainWindow(QMainWindow):
 
         self.bbox_checkbox = QCheckBox("Show Bounding Boxes")
         self.bbox_checkbox.setChecked(True)
+        self.bbox_checkbox.setToolTip("Toggle to show or hide bounding boxes around detected objects.")
         self.bbox_checkbox.stateChanged.connect(self.toggle_display_options)
         display_layout.addWidget(self.bbox_checkbox)
 
         self.id_checkbox = QCheckBox("Show Object IDs")
         self.id_checkbox.setChecked(True)
+        self.id_checkbox.setToolTip("Toggle to show or hide unique tracking IDs for each detected objects.")
         self.id_checkbox.stateChanged.connect(self.toggle_display_options)
         display_layout.addWidget(self.id_checkbox)
 
         self.label_checkbox = QCheckBox("Show Labels")
         self.label_checkbox.setChecked(True)
+        self.label_checkbox.setToolTip("Toggle to show or hide species name on detected objects.")
         self.label_checkbox.stateChanged.connect(self.toggle_display_options)
         display_layout.addWidget(self.label_checkbox)
 
         self.toggle_size_checkbox = QCheckBox("Show Box Sizes")
         self.toggle_size_checkbox.setChecked(True)
+        self.toggle_size_checkbox.setToolTip("Toggle to display the width and height of detected objects in micrometers.")
         self.toggle_size_checkbox.stateChanged.connect(self.toggle_display_options)
         display_layout.addWidget(self.toggle_size_checkbox)
 
@@ -567,6 +571,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(camera_label)
 
             self.camera_combo = QComboBox()
+            self.camera_combo.setToolTip("Select an available camera to use for detection.")
             self.camera_combo.addItems(self.get_camera_list())
             self.camera_combo.currentIndexChanged.connect(self.change_camera)
             layout.addWidget(self.camera_combo)
@@ -574,11 +579,13 @@ class MainWindow(QMainWindow):
         elif title == "Capture & Record":
             # Button to capture a screenshot
             capture_button = QPushButton("Capture Screenshot")
+            capture_button.setToolTip("Save the current video frame as a screenshot.")
             capture_button.clicked.connect(self.capture_screenshot)
             layout.addWidget(capture_button)
 
             # Button to start/stop recording
             self.record_button = QPushButton("Start Recording")
+            self.record_button.setToolTip("Start or stop recording the video feed.")
             self.record_button.clicked.connect(self.toggle_recording)
             layout.addWidget(self.record_button)
         
@@ -588,6 +595,7 @@ class MainWindow(QMainWindow):
 
             self.lens_combo = QComboBox()
             self.lens_combo.addItems(["10x", "40x"])
+            self.lens_combo.setToolTip("Choose the magnification level of the microscope lens.")
             self.lens_combo.currentTextChanged.connect(self.change_lens_model)
             layout.addWidget(self.lens_combo)
 
@@ -598,6 +606,7 @@ class MainWindow(QMainWindow):
             self.conf_slider = QSlider(Qt.Horizontal)
             self.conf_slider.setRange(1, 99)
             self.conf_slider.setValue(50)
+            self.conf_slider.setToolTip("Adjust the confidence threshold for object detection (higher values show fewer but more accurate detections).")
             self.conf_slider.valueChanged.connect(self.update_conf_thresh)
             layout.addWidget(self.conf_slider)
 
@@ -607,6 +616,7 @@ class MainWindow(QMainWindow):
             self.dist_slider = QSlider(Qt.Horizontal)
             self.dist_slider.setRange(0, 300)
             self.dist_slider.setValue(150)
+            self.dist_slider.setToolTip("Adjust the tracking distance threshold (higher values track objects over longer distances).")
             self.dist_slider.valueChanged.connect(self.update_distance_thresh)
             layout.addWidget(self.dist_slider)
 
