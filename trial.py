@@ -62,7 +62,7 @@ class YOLOv5Worker(QThread):
         )
         
         # Load the YOLOv5 model with default weights
-        self.load_model("models/10x.pt")
+        self.load_model("models/10xv3.pt")
 
         self.class_name_correction = {
             "Pyrodinium bahamense var compressum": "Pyrodinium bahamense var. compressum"
@@ -302,7 +302,7 @@ class MainWindow(QMainWindow):
         self.yolo_worker = YOLOv5Worker(camera_index=0)
         self.yolo_worker.frame_processed.connect(self.update_frame)
         self.yolo_worker.class_tally_updated.connect(self.update_tally)
-        self.yolo_worker.load_model("models/10x.pt")
+        self.yolo_worker.load_model("models/10xv3.pt")
         self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels)
         self.yolo_worker.start()
 
@@ -787,10 +787,10 @@ class MainWindow(QMainWindow):
 
     def change_lens_model(self, lens):
         model_paths = {
-            "10x": "models/10x.pt", 
+            "10x": "models/10xv3.pt", 
             "40x": "models/40x.pt", 
         }
-        selected_model = model_paths.get(lens, "models/10x.pt")
+        selected_model = model_paths.get(lens, "models/10xv3.pt")
         self.yolo_worker.load_model(selected_model)
         success_message = f"Lens changed to {lens}, model loaded: {selected_model}"
         print(success_message)
