@@ -653,7 +653,7 @@ class MainWindow(QMainWindow):
 
     def create_tally_panel(self):
         tally_widget = QWidget()
-        # tally_widget.setFixedWidth(300)
+        tally_widget.setFixedWidth(270)
         tally_layout = QVBoxLayout(tally_widget)
 
         # Species composition tally
