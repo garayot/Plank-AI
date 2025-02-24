@@ -792,6 +792,7 @@ class MainWindow(QMainWindow):
         }
         selected_model = model_paths.get(lens, "models/10xv3.pt")
         self.yolo_worker.load_model(selected_model)
+        self.update_frame(self.current_qimage)
         success_message = f"Lens changed to {lens}, model loaded: {selected_model}"
         print(success_message)
         self.show_notification(success_message)
@@ -802,12 +803,60 @@ class MainWindow(QMainWindow):
     def update_distance_thresh(self, value):
         self.yolo_worker.set_distance_thresh(value)
 
+    def draw_rulers(self, frame):
+        """Draw rulers on the video frame based on lens selection and zoom level."""
+        height, width, _ = frame.shape
+        scale_factor = self.get_scale_factor()
+
+        # Define ruler parameters
+        num_divisions = 10
+        spacing = width // num_divisions  # Equally spaced divisions
+        micrometer_spacing = spacing * scale_factor  # Convert pixels to µm
+
+        # Draw horizontal ruler
+        for i in range(num_divisions + 1):
+            x_pos = i * spacing
+            cv2.line(frame, (x_pos, height - 30), (x_pos, height - 10), (255, 255, 255), 1)
+            cv2.putText(frame, f"{i * micrometer_spacing:.1f} um", (x_pos + 2, height - 15),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+        # Draw vertical ruler
+        for i in range(num_divisions + 1):
+            y_pos = i * spacing
+            cv2.line(frame, (10, y_pos), (30, y_pos), (255, 255, 255), 1)
+            cv2.putText(frame, f"{i * micrometer_spacing:.1f} um", (35, y_pos + 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+        return frame
+
+    def get_scale_factor(self):
+        """Get the scale factor based on selected lens and zoom level."""
+        base_factors = {"10x": 1.5, "40x": 0.375}  # µm per pixel for each lens
+        lens = self.lens_combo.currentText()
+        zoom_adjustment = self.zoom_factor
+
+        return base_factors.get(lens, 1.5) / zoom_adjustment  # Adjust for zoom level
+
     def update_frame(self, q_image):
         self.current_qimage = q_image  # Store current frame
+        
+        # Convert QImage to OpenCV format
+        frame = q_image.bits().tobytes()
+        frame = np.frombuffer(frame, dtype=np.uint8).reshape((q_image.height(), q_image.width(), 3))
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        
+        # Draw rulers before converting back
+        frame = self.draw_rulers(frame)
+        
+        # Convert back to QImage
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        q_image = QImage(rgb_frame.data, rgb_frame.shape[1], rgb_frame.shape[0],
+                        rgb_frame.shape[1] * 3, QImage.Format_RGB888)
+        
         pixmap = QPixmap.fromImage(q_image)
         new_size = pixmap.size() * self.zoom_factor
         scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-
+        
         # Constrain pan offset to prevent black areas
         max_x_offset = max(0, scaled_pixmap.width() - self.video_label.width())
         max_y_offset = max(0, scaled_pixmap.height() - self.video_label.height())
@@ -818,7 +867,7 @@ class MainWindow(QMainWindow):
         target_rect = QRect(self.pan_offset.x(), self.pan_offset.y(), self.video_label.width(), self.video_label.height())
         cropped_pixmap = scaled_pixmap.copy(target_rect.intersected(scaled_pixmap.rect()))
         self.video_label.setPixmap(cropped_pixmap)
-
+        
         if self.is_recording and self.video_writer:
             frame = q_image.bits().tobytes()
             frame = np.frombuffer(frame, dtype=np.uint8).reshape((q_image.height(), q_image.width(), 3))
