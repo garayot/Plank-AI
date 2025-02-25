@@ -41,6 +41,7 @@ class YOLOv5Worker(QThread):
         self.show_ids = True #toggles object ids
         self.show_labels = True #toggles object labels
         self.display_size_labels = True # Default display size labels
+        self.display_rulers = False
         self.running = False  # Flag to control thread execution
         self.capture = None  # Video capture object
         self.camera_index = camera_index  # Index of the camera to use
@@ -78,11 +79,12 @@ class YOLOv5Worker(QThread):
             distance_threshold=self.distance_thresh
         )
 
-    def set_display_options(self, show_bboxes, show_ids, show_labels, display_size_labels):
+    def set_display_options(self, show_bboxes, show_ids, show_labels, display_size_labels, display_rulers):
         self.show_bboxes = show_bboxes
         self.show_ids = show_ids
         self.show_labels = show_labels
         self.display_size_labels = bool(display_size_labels)
+        self.display_rulers = display_rulers
 
     # def toggle_size_labels(self, state):
     #     self.display_size_labels = bool(state)
@@ -249,6 +251,7 @@ class MainWindow(QMainWindow):
         self.show_ids = True
         self.show_labels = True
         self.display_size_labels = True
+        self.display_rulers = False
 
         self.zoom_factor = 1.0
 
@@ -303,7 +306,7 @@ class MainWindow(QMainWindow):
         self.yolo_worker.frame_processed.connect(self.update_frame)
         self.yolo_worker.class_tally_updated.connect(self.update_tally)
         self.yolo_worker.load_model("models/10xv3.pt")
-        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels)
+        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels, self.display_rulers)
         self.yolo_worker.start()
 
     def init_ui(self):
@@ -500,13 +503,6 @@ class MainWindow(QMainWindow):
         self.zoom_factor = value / 100.0
         self.zoom_label.setText(f"{value}%")
         self.update_frame(self.current_qimage)
-
-    # def apply_zoom(self):
-    #     if self.video_label.pixmap():
-    #         pixmap = self.video_label.pixmap()
-    #         new_size = pixmap.size() * self.zoom_factor
-    #         scaled_pixmap = pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-    #         self.video_label.setPixmap(scaled_pixmap)
     
     def create_settings_panel(self):
         # Create a scrollable settings panel
@@ -545,6 +541,12 @@ class MainWindow(QMainWindow):
         self.toggle_size_checkbox.setToolTip("Toggle to display the width and height of detected objects in micrometers.")
         self.toggle_size_checkbox.stateChanged.connect(self.toggle_display_options)
         display_layout.addWidget(self.toggle_size_checkbox)
+
+        self.rulers_checkbox = QCheckBox("Show Rulers")
+        self.rulers_checkbox.setChecked(False)
+        self.rulers_checkbox.setToolTip("Toggle to display rulers on the video feed")
+        self.rulers_checkbox.stateChanged.connect(self.toggle_display_options)
+        display_layout.addWidget(self.rulers_checkbox)
 
         display_options_group.setLayout(display_layout)
         settings_layout.addWidget(display_options_group)
@@ -696,7 +698,8 @@ class MainWindow(QMainWindow):
         self.show_ids = self.id_checkbox.isChecked()
         self.show_labels = self.label_checkbox.isChecked()
         self.display_size_labels = self.toggle_size_checkbox.isChecked()
-        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels)
+        self.display_rulers = self.rulers_checkbox.isChecked()
+        self.yolo_worker.set_display_options(self.show_bboxes, self.show_ids, self.show_labels, self.display_size_labels, self.display_rulers)
 
     def get_camera_list(self):
         available_cameras = []
@@ -804,7 +807,8 @@ class MainWindow(QMainWindow):
         self.yolo_worker.set_distance_thresh(value)
 
     def draw_rulers(self, frame):
-        """Draw rulers on the video frame based on lens selection and zoom level."""
+        if not self.display_rulers:
+            return frame
         height, width, _ = frame.shape
         scale_factor = self.get_scale_factor()
 
@@ -817,14 +821,14 @@ class MainWindow(QMainWindow):
         for i in range(num_divisions + 1):
             x_pos = i * spacing
             cv2.line(frame, (x_pos, height - 30), (x_pos, height - 10), (255, 255, 255), 1)
-            cv2.putText(frame, f"{i * micrometer_spacing:.1f} um", (x_pos + 2, height - 15),
+            cv2.putText(frame, f"{i * micrometer_spacing:.1f}", (x_pos + 2, height - 15),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
         # Draw vertical ruler
         for i in range(num_divisions + 1):
             y_pos = i * spacing
             cv2.line(frame, (10, y_pos), (30, y_pos), (255, 255, 255), 1)
-            cv2.putText(frame, f"{i * micrometer_spacing:.1f} um", (35, y_pos + 5),
+            cv2.putText(frame, f"{i * micrometer_spacing:.1f}", (35, y_pos + 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
         return frame
