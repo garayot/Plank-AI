@@ -100,6 +100,7 @@ Results can be exported as an **Excel file** (.xlsx) containing:
 - ✅ Support for **custom YOLO models**.
 - ✅ **Performance optimizations** for real-time tracking.
 - ✅ Enhanced **post-processing features**.
+- ✅ Web Support **Website App**.
 
 ---
 
