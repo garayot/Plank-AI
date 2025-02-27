@@ -164,22 +164,8 @@ class YOLOv5Worker(QThread):
 
         while self.running:
             ret, frame = self.capture.read()
-            # if not ret:
-            #     error_message = "Error: Failed to read frame from webcam."
-            #     print(error_message)
-            #     self.error_message.emit(error_message)
-            #     break
-
-            # Perform YOLOv5 detection only if the model is loaded
-            # try:
             results = self.yolo_model(frame)
-            #     print("YOLOv5 detection successful.")
-            # except Exception as e:
-            #     error_message = f"Error during detection: {e}"
-            #     print(error_message)
-            #     self.error_message.emit(error_message)
-            #     break
-
+           
             # Convert YOLO detections to Norfair detections
             detections = self.yolo_to_norfair_detections(results)
 
@@ -258,6 +244,11 @@ class MainWindow(QMainWindow):
         self.pan_offset = QPoint(0, 0)  # Initial panning offset
         self.is_panning = False  # Track whether panning is active
         self.last_mouse_pos = QPoint()  # Store last mouse position
+
+        # New fields for metadata
+        self.sample_date = ""
+        self.sample_location = ""
+        self.lab_technician = ""
 
         self.setMenuBar(self.create_menu_bar())
 
@@ -658,6 +649,16 @@ class MainWindow(QMainWindow):
         tally_widget.setFixedWidth(270)
         tally_layout = QVBoxLayout(tally_widget)
 
+        # Input fields for metadata
+        metadata_layout = QFormLayout()
+        self.date_input = QLineEdit()
+        self.location_input = QLineEdit()
+        self.technician_input = QLineEdit()
+        metadata_layout.addRow("Date:", self.date_input)
+        metadata_layout.addRow("Location:", self.location_input)
+        metadata_layout.addRow("Lab Technician:", self.technician_input)
+        # layout.addLayout(metadata_layout)
+
         # Species composition tally
         self.tally_table = QTableWidget()
         self.tally_table.setColumnCount(3)
@@ -671,6 +672,8 @@ class MainWindow(QMainWindow):
         self.export_button = QPushButton("Export to Excel")
         self.export_button.clicked.connect(self.export_to_excel)
 
+        tally_layout.addWidget(QLabel("Metadata:"))
+        tally_layout.addLayout(metadata_layout)
         tally_layout.addWidget(QLabel("Species Composition:"))
         tally_layout.addWidget(self.tally_table)
         tally_layout.addWidget(calculate_button)
@@ -951,24 +954,33 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Excel Files (*.xlsx)")
         if file_path:
             if not file_path.endswith(".xlsx"):
-                file_path += ".xlsx"  # Ensure the file has the correct extension
+                file_path += ".xlsx"
 
-            data = {"Species": [], "Count": [], "Cell Density (cells/mL)": []}
+            # Capture metadata values
+            self.sample_date = self.date_input.text()
+            self.sample_location = self.location_input.text()
+            self.lab_technician = self.technician_input.text()
+
+            data = {
+                "Species": [], "Count": [], "Cell Density (cells/mL)": []
+            }
             for row in range(self.tally_table.rowCount()):
                 data["Species"].append(self.tally_table.item(row, 0).text())
                 data["Count"].append(int(self.tally_table.item(row, 1).text()))
                 data["Cell Density (cells/mL)"].append(float(self.tally_table.item(row, 2).text()))
-        
+
             df = pd.DataFrame(data)
-            try:
-                df.to_excel(file_path, index=False)
-                success_message = f"Tally exported to {file_path}"
-                print(success_message)
-                self.show_notification(success_message)
-            except Exception as e:
-                error_message = f"Error saving Excel file: {e}"
-                print(error_message)
-                self.show_notification(error_message)
+            metadata_df = pd.DataFrame({
+                "Date": [self.sample_date],
+                "Location": [self.sample_location],
+                "Lab Technician": [self.lab_technician]
+            })
+
+            with pd.ExcelWriter(file_path) as writer:
+                metadata_df.to_excel(writer, sheet_name="Metadata", index=False)
+                df.to_excel(writer, sheet_name="Tally Data", index=False)
+
+            QMessageBox.information(self, "Export Successful", f"Data exported to {file_path}")
 
     def closeEvent(self, event):
         self.yolo_worker.stop()
