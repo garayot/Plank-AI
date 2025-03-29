@@ -2,7 +2,7 @@ import sys
 import cv2
 import torch
 import numpy as np
-import pandas as pd  # For exporting to Excel
+import pandas as pd
 from pathlib import Path
 from norfair import Detection, Tracker, draw_tracked_objects
 from PySide6.QtWidgets import (
@@ -147,6 +147,19 @@ class YOLOv5Worker(QThread):
             self.bounding_boxes.append((int(x_min), int(y_min), int(x_max), int(y_max), class_name, color, width_um, height_um))
 
         return detections
+    
+    def reset_tracking(self):
+        """Resets class tallies, tracked IDs, and reinitializes the Norfair tracker."""
+        self.class_tallies.clear()
+        self.tracked_object_ids.clear()
+        # Reinitialize tracker with current distance threshold
+        self.tracker = Tracker(
+            distance_function=self.euclidean_distance,
+            distance_threshold=self.distance_threshold
+        )
+        # Emit updated (empty) tallies to refresh GUI
+        self.class_tally_updated.emit(dict(self.class_tallies))
+        print("Tracking and tally reset.")
 
     def run(self):
 
@@ -659,6 +672,11 @@ class MainWindow(QMainWindow):
         metadata_layout.addRow("Lab Technician:", self.technician_input)
         # layout.addLayout(metadata_layout)
 
+        # Button to reset the tally
+        self.reset_button = QPushButton("Reset Tally")
+        self.reset_button.clicked.connect(self.reset_tally)
+        self.reset_button.setToolTip("Reset the current tally and tracking.")
+
         # Species composition tally
         self.tally_table = QTableWidget()
         self.tally_table.setColumnCount(3)
@@ -674,12 +692,19 @@ class MainWindow(QMainWindow):
 
         tally_layout.addWidget(QLabel("Metadata:"))
         tally_layout.addLayout(metadata_layout)
+        tally_layout.addWidget(self.reset_button)
         tally_layout.addWidget(QLabel("Species Composition:"))
         tally_layout.addWidget(self.tally_table)
         tally_layout.addWidget(calculate_button)
         tally_layout.addWidget(self.export_button)
 
         return tally_widget
+    
+    def reset_tally(self):
+        """Reset the tally and tracking by invoking the worker's reset method."""
+        self.yolo_worker.reset_tracking()
+        self.tally_table.setRowCount(0)  # Clear the table
+        self.statusBar().showMessage("Tally and tracking reset.")
 
     def start_detection(self):
         if not self.yolo_worker.isRunning():
@@ -793,8 +818,8 @@ class MainWindow(QMainWindow):
 
     def change_lens_model(self, lens):
         model_paths = {
-            "10x": "C:/Users/garay/Desktop/Thesis data/models/10xv3.pt", 
-            "40x": "C:/Users/garay/Desktop/Thesis data/models/40x.pt", 
+            "4x": "C:/Users/garay/Desktop/Thesis data/models/10xv3.pt", 
+            "10x": "C:/Users/garay/Desktop/Thesis data/models/40x.pt", 
         }
         selected_model = model_paths.get(lens, "C:/Users/garay/Desktop/Thesis data/models/10xv3.pt")
         self.yolo_worker.load_model(selected_model)
