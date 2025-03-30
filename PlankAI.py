@@ -52,9 +52,8 @@ class YOLOv5Worker(QThread):
         self.conf_thresh = 0.5 # Default confidence threshold for YOLOv5 detections
         self.distance_threshold = 150 # Default distance threshold for Norfair object tracking
         
-        
         # Assign unique colors for each detected species
-        self.species_colors = defaultdict(lambda: tuple([int(x) for x in np.random.choice(range(7), size=3)]))
+        self.species_colors = defaultdict(lambda: tuple([int(x) for x in np.random.choice(range(255), size=3)]))
         
         # Initialize the Norfair tracker with Euclidean distance function
         self.tracker = Tracker(
@@ -142,8 +141,8 @@ class YOLOv5Worker(QThread):
             # Save bounding box and label info for visualization
             class_name = self.yolo_model.names[int(class_id)]
             color = self.species_colors[class_name]  # Assign unique color per class
-            width_um = (x_max - x_min) * 0.25  # Convert pixels to micrometers
-            height_um = (y_max - y_min) * 0.25 # Adjust for calibration
+            width_um = (x_max - x_min) * 0.8625  # Convert pixels to micrometers
+            height_um = (y_max - y_min) * 0.8625 # Adjust for calibration
             self.bounding_boxes.append((int(x_min), int(y_min), int(x_max), int(y_max), class_name, color, width_um, height_um))
 
         return detections
@@ -195,7 +194,7 @@ class YOLOv5Worker(QThread):
             # Emit updated tallies
             self.class_tally_updated.emit(dict(self.class_tallies))
 
-            # Annotate the frame with bounding boxes, size, and labels
+            # Annotate the frame with bounding boxes, size, labels and size in micrometers
             for (x_min, y_min, x_max, y_max, label, color, width_um, height_um) in self.bounding_boxes:
                 if self.show_bboxes:
                     cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), color, 1)
@@ -600,7 +599,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(lens_label)
 
             self.lens_combo = QComboBox()
-            self.lens_combo.addItems(["10x", "40x"])
+            self.lens_combo.addItems(["4x", "10x"])
             self.lens_combo.setToolTip("Choose the magnification level of the microscope lens.")
             self.lens_combo.currentTextChanged.connect(self.change_lens_model)
             layout.addWidget(self.lens_combo)
@@ -863,7 +862,7 @@ class MainWindow(QMainWindow):
 
     def get_scale_factor(self):
         """Get the scale factor based on selected lens and zoom level."""
-        base_factors = {"10x": 1.5, "40x": 0.375}  # µm per pixel for each lens
+        base_factors = {"4x": 0.8625, "10x": 0.25}  # µm per pixel for each lens
         lens = self.lens_combo.currentText()
         zoom_adjustment = self.zoom_factor
 
