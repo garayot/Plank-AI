@@ -3,18 +3,20 @@
 ## 🌊 Introduction
 
 **Plank.AI** is an AI-powered application for real-time plankton detection, tracking, and tallying. It utilizes **YOLOv5** for object detection and **Norfair** for object tracking, integrating seamlessly into a user-friendly **PySide6** GUI for visualization and interaction.
+Now enhanced with an **AI-powered chat assistant**, Plank.AI can provide insightful answers and context-aware suggestions based on the **plankton species tally metadata**.
 
 ---
 
 ## 🚀 Features
 
-- **Real-time plankton detection** using YOLOv5
-- **Object tracking** with Norfair
-- **Customizable display options** (Bounding Boxes, Labels, Object IDs, Plankton Size)
-- **Camera selection and recording capabilities**
-- **Export detection results** to Excel for analysis
-- **Plankton density calculation** based on configurable parameters
-- **User-friendly GUI** built with PySide6
+- **Real-time plankton detection** using YOLOv5  
+- **Object tracking** with Norfair  
+- **AI Chat Assistant** integrated into the GUI for data-driven conversations  
+- **Customizable display options** (Bounding Boxes, Labels, Object IDs, Plankton Size)  
+- **Camera selection and recording capabilities**  
+- **Export detection results** to Excel for analysis  
+- **Plankton density calculation** based on configurable parameters  
+- **User-friendly GUI** built with PySide6  
 
 ---
 
@@ -45,7 +47,8 @@ python trial.py
 3. **Norfair tracking** maintains object identities across frames.
 4. The GUI displays **real-time bounding boxes**, **object labels**, **track IDs**, and **plankton size**.
 5. The **species tally is updated**, and density calculations are available.
-6. Users can **export results to Excel** for further analysis.
+6. The **AI Assistant** responds to user queries based on the tally's metadata.
+7. Users can **export results to Excel** for further analysis.
 
 ---
 
@@ -61,6 +64,7 @@ python trial.py
 - **Switch Models for different Objectives**: supports only 10x and 40x objectives.
 - **Export Data**: Save species tally to an Excel file.
 - **Plankton Density Calculation**: Automatically compute cell density in mL.
+- **AI Chat Assistant**: Ask questions and get real-time answers based on detection data.
 
 ---
 
@@ -83,6 +87,7 @@ Results can be exported as an **Excel file** (.xlsx) containing:
 - **Norfair** (for tracking)
 - **Pandas** (for data export)
 - **NumPy** (for numerical processing)
+- **Google Generative AI API** (for AI assistant)
 
 ---
 
@@ -101,6 +106,8 @@ Results can be exported as an **Excel file** (.xlsx) containing:
 - ✅ **Performance optimizations** for real-time tracking.
 - ✅ Enhanced **post-processing features**.
 - ✅ Web Support **Website App**.
+- 🔄 Enhanced natural language understanding for the **AI Assistant**.
+- 🔄 Real-time communication between tally updates and chat responses.
 
 ---
 
