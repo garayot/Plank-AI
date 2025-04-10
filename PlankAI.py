@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QPushButton, QScrollArea, QFrame, QComboBox, QFileDialog, QTableWidget, QTableWidgetItem, 
     QSlider, QLineEdit, QCheckBox, QMenuBar, QMessageBox, QFormLayout, QDialog, QHBoxLayout
 )
-from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QMouseEvent
+from PySide6.QtGui import QImage, QPixmap, QIcon, QAction, QMouseEvent, QPainter, QPen, QColor
 from PySide6.QtCore import QThread, Signal, Qt, QTimer, QSize, QTime, QDateTime, QPoint, QRect
 
 from collections import defaultdict
@@ -229,6 +229,46 @@ class YOLOv5Worker(QThread):
     def set_camera(self, index):
         self.camera_index = index
 
+class VideoLabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent  # Reference to MainWindow
+        self.measure_start = None
+        self.measure_end = None
+
+    def mousePressEvent(self, event):
+        if self.parent.is_measuring:
+            if not self.parent.measure_start:
+                self.parent.measure_start = event.position().toPoint()
+            else:
+                self.parent.measure_end = event.position().toPoint()
+                self.parent.calculate_measurement()
+            self.update()
+        else:
+            # Handle panning
+            if self.parent.zoom_factor > 1.0:
+                self.parent.is_panning = True
+                self.parent.last_mouse_pos = event.position().toPoint()
+
+    def mouseMoveEvent(self, event):
+        if self.parent.is_panning:
+            delta = event.position().toPoint() - self.parent.last_mouse_pos
+            self.parent.pan_offset += delta
+            self.parent.last_mouse_pos = event.position().toPoint()
+            self.parent.update_frame(self.parent.current_qimage)
+
+    def mouseReleaseEvent(self, event):
+        self.parent.is_panning = False
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.parent.measure_start and self.parent.measure_end:
+            painter = QPainter(self)
+            pen = QPen(QColor("red"))
+            pen.setWidth(2)
+            painter.setPen(pen)
+            painter.drawLine(self.parent.measure_start, self.parent.measure_end)
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -244,6 +284,11 @@ class MainWindow(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_timer_display)
         self.elapsed_time = 0
+
+        self.is_measuring = False
+        self.measure_start = None
+        self.measure_end = None
+        self.pixel_to_micrometer = 0.25
 
         self.show_bboxes = True
         self.show_ids = True
@@ -461,6 +506,10 @@ class MainWindow(QMainWindow):
         stop_action.triggered.connect(self.stop_detection)
         self.toolbar.addAction(stop_action)
 
+        measure_action = QAction(QIcon("icons/measure.png"), "Measure", self)
+        measure_action.triggered.connect(self.toggle_measurement)
+        self.toolbar.addAction(measure_action)
+
     def add_zoom_controls(self):
         zoom_layout = QHBoxLayout()
 
@@ -632,25 +681,11 @@ class MainWindow(QMainWindow):
         video_widget = QWidget()
         video_layout = QVBoxLayout(video_widget)
 
-        self.video_label = QLabel("Initializing video stream...")
-        self.video_label.setStyleSheet(
-            """
-            QLabel {
-                background-color: black;
-                color: white;
-                font-size: 12px;
-                border: 1px solid white;
-            }
-            """
-        )
+        self.video_label = VideoLabel(self)
         self.video_label.setAlignment(Qt.AlignCenter)
         self.video_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.video_label.setScaledContents(False)
         self.video_label.setMouseTracking(True)
-
-        self.video_label.mousePressEvent = self.start_pan
-        self.video_label.mouseMoveEvent = self.pan_video
-        self.video_label.mouseReleaseEvent = self.end_pan
 
         video_layout.addWidget(self.video_label)
         
@@ -719,6 +754,30 @@ class MainWindow(QMainWindow):
         if self.yolo_worker.isRunning():
             self.yolo_worker.stop()
             self.statusBar().showMessage("Detection stopped.")
+
+    def toggle_measurement(self):
+        self.is_measuring = not self.is_measuring
+        self.video_label.setCursor(Qt.CrossCursor if self.is_measuring else Qt.ArrowCursor)
+        if self.is_measuring:
+            self.statusBar().showMessage("Measurement Mode: Click two points to measure.")
+            self.measure_start = None
+            self.measure_end = None
+        else:
+            self.statusBar().clearMessage()
+        self.video_label.update()
+        
+    def calculate_measurement(self):
+        if self.measure_start and self.measure_end:
+            # Convert points to widget coordinates
+            pixel_distance = ((self.measure_end.x() - self.measure_start.x())**2 +
+                            (self.measure_end.y() - self.measure_start.y())**2) ** 0.5
+            size_micrometers = pixel_distance * self.pixel_to_micrometer
+            QMessageBox.information(self, "Measurement Result", f"Size: {size_micrometers:.2f} µm")
+            self.measure_start = None
+            self.measure_end = None
+            self.is_measuring = False
+            self.statusBar().clearMessage()
+            self.video_label.update()
 
     def toggle_display_options(self):
         self.show_bboxes = self.bbox_checkbox.isChecked()
@@ -904,22 +963,6 @@ class MainWindow(QMainWindow):
             frame = np.frombuffer(frame, dtype=np.uint8).reshape((q_image.height(), q_image.width(), 3))
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             self.video_writer.write(frame)
-
-    def start_pan(self, event: QMouseEvent):
-        if self.zoom_factor > 1.0:
-            self.is_panning = True
-            self.last_mouse_pos = event.position().toPoint()
-
-    def pan_video(self, event: QMouseEvent):
-        if self.is_panning:
-            delta = event.position().toPoint() - self.last_mouse_pos
-            self.pan_offset += delta
-            self.last_mouse_pos = event.position().toPoint()
-            self.update_frame(self.current_qimage)
-
-    def end_pan(self, event: QMouseEvent):
-        self.is_panning = False
-
 
     def load_tally_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Tally File", "", "Excel Files (*.xlsx)")
