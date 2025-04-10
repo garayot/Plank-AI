@@ -3,6 +3,7 @@ import cv2
 import torch
 import numpy as np
 import pandas as pd
+from AIChat import AIChatDialog
 from pathlib import Path
 from norfair import Detection, Tracker, draw_tracked_objects
 from PySide6.QtWidgets import (
@@ -290,6 +291,10 @@ class MainWindow(QMainWindow):
         self.measure_end = None
         self.pixel_to_micrometer = 0.25
 
+        self.ai_chat = AIChatDialog(self)
+        self.ai_chat.hide()
+        self.ai_chat.move(self.width() - self.ai_chat.width() - 20, self.height() - self.ai_chat.height() - 40)
+
         self.show_bboxes = True
         self.show_ids = True
         self.show_labels = True
@@ -387,6 +392,10 @@ class MainWindow(QMainWindow):
         video_directory_action = preferences_menu.addAction("Video Directory")
         cell_density_calculator_action.triggered.connect(self.show_preference_dialog)
         video_directory_action.triggered.connect(self.set_save_path)
+        ai_chat_action = QAction("Toggle AI Chat", self, checkable=True)
+        ai_chat_action.setChecked(False)
+        ai_chat_action.triggered.connect(self.toggle_ai_chat)
+        preferences_menu.addAction(ai_chat_action)
         
         # Help Menu
         help_menu = menu_bar.addMenu("Help")
@@ -462,6 +471,16 @@ class MainWindow(QMainWindow):
 
         dialog.setLayout(layout)
         dialog.exec()
+
+    def toggle_ai_chat(self, state):
+        if state:
+            if not hasattr(self, 'ai_chat') or not self.ai_chat:
+                self.ai_chat = AIChatDialog(self)
+                self.ai_chat.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+            self.ai_chat.show()
+        else:
+            if hasattr(self, 'ai_chat') and self.ai_chat:
+                self.ai_chat.hide()
 
     def set_save_path(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Save Directory")
@@ -555,7 +574,12 @@ class MainWindow(QMainWindow):
         self.zoom_factor = value / 100.0
         self.zoom_label.setText(f"{value}%")
         self.update_frame(self.current_qimage)
-    
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'ai_chat') and self.ai_chat.isVisible():
+            self.ai_chat.move(self.width() - self.ai_chat.width() - 20, self.height() - self.ai_chat.height() - 40)
+
     def create_settings_panel(self):
         # Create a scrollable settings panel
         scroll_area = QScrollArea()
