@@ -3,6 +3,7 @@
 ## 🌊 Introduction
 
 **Plank.AI** is an AI-powered application for real-time plankton detection, tracking, and tallying. It utilizes **YOLOv5** for object detection and **Norfair** for object tracking, integrating seamlessly into a user-friendly **PySide6** GUI for visualization and interaction.
+
 Now enhanced with an **AI-powered chat assistant**, Plank.AI can provide insightful answers and context-aware suggestions based on the **plankton species tally metadata**.
 
 ---
