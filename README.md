@@ -6,7 +6,7 @@
 
 Now enhanced with an **AI-powered chat assistant**, Plank.AI can provide insightful answers and context-aware suggestions based on the **plankton species tally metadata**.
 
-![Screenshot](images/screenshot.png)
+![Screenshot](Images/screenshot.png)
 
 ---
 
