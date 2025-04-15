@@ -6,18 +6,20 @@
 
 Now enhanced with an **AI-powered chat assistant**, Plank.AI can provide insightful answers and context-aware suggestions based on the **plankton species tally metadata**.
 
+![Screenshot](images/screenshot.png)
+
 ---
 
 ## 🚀 Features
 
-- **Real-time plankton detection** using YOLOv5  
-- **Object tracking** with Norfair  
-- **AI Chat Assistant** integrated into the GUI for data-driven conversations  
-- **Customizable display options** (Bounding Boxes, Labels, Object IDs, Plankton Size)  
-- **Camera selection and recording capabilities**  
-- **Export detection results** to Excel for analysis  
-- **Plankton density calculation** based on configurable parameters  
-- **User-friendly GUI** built with PySide6  
+- **Real-time plankton detection** using YOLOv5
+- **Object tracking** with Norfair
+- **AI Chat Assistant** integrated into the GUI for data-driven conversations
+- **Customizable display options** (Bounding Boxes, Labels, Object IDs, Plankton Size)
+- **Camera selection and recording capabilities**
+- **Export detection results** to Excel for analysis
+- **Plankton density calculation** based on configurable parameters
+- **User-friendly GUI** built with PySide6
 
 ---
 
